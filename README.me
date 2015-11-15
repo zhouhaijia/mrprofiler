@@ -1,0 +1,87 @@
+# A simple hadoop mapreduce job profiler
+
+## License
+
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+## Documentation
+
+### Overview 
+  Profiling hadoop jobs are exceptionally difficult due to its distributed computing natural. The existing profiler on the market are always very heavy-weight and pricy and would need a lot of time to get familiar with. In my experience, in most cases what we need from a profiler is:
+
+ * Light weight - it should be able to profile the job even in production environment without too much overhead
+ * Flexible - in many cases we don't need to measure every single method, instead, what we need are  the performance metrics of several specific method.
+
+
+### Introduction:
+
+The profiler is built with Java Instrumentation Framework and Javassist (https://github.com/jboss-javassist/javassist), a java bytecode manipulation framework from JBoss.
+
+The idea is to instrument bytecode into target java method at the "before" and "after" point of method invocation.
+
+It works as follows:
+
+When the profiler starts, it scan all loaded classes and their method (including private method) to find out target method (see next section for how to set up target method)
+The profiler will instrument custom bytecode to the target method so that:
+When the method starts, its start time and invocation number will be recorded
+When the method ends, its execution time will be computed and recorded
+The "cleanup()" method of the map/reduce class is instrumented so that when the map/reduce task finishes the profiler will set up hadoop counter with recorded metrics.
+So far we only profile method execution time and invocation number. Memory usage profiling is currently not supported.
+The method invocation count will be recorded as hadoop counter with name <methodname>.invocationCount
+The method execution time will be recorded as hadoop counter with name <methodname>.execTimeMs
+Setup Target Methods:
+
+There are two ways of setting up target Methods:
+
+Use annotation com.demdex.platform.utils.profiling.Profile:
+
+The annotation is defined as follows:
+
+	@Target({ElementType.METHOD})
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Profile {
+    	String   group() default "hadoop-profiler"; // hadoop counter group
+    	String   name() default "";// method name used in hadoop counter, if not specified, the method name will be used
+    	boolean   fullname() default false; // when set to true, the full method name (including package namespace) will be used, when set to false, only method name will be used.
+	}
+For example, you can annotate your target method as follows:
+
+	@Profile(group="Profiling")  
+	public void methodToProfile(){
+		//do some work
+	}
+
+You can also specify list of method with "-javaagent" command.This method more 
+flexible than the annotation one in that it can be used to target methods 
+in third party libraries, but you can't specify the group and change method name.
+
+For example, you can specify the same target method using following command:
+-javaagent:/tmp/profiler.jar=testMethod
+If you have more than one method you can join then using ",", for example:
+-javaagent:/tmp/profiler.jar=testMethod1,testMethod2,...testMethodN
+
+Hadoop Job Setup:
+
+In order to profile hadoop job, following steps needs to be done.
+
+The two jar files (javassist.jar and profiler.jar) needs to be copied to all hadoop tasktracker nodes, this step is required and we can't use distributed cache to add these two jars because the java agent initialization would happen before the distributed jar files are downloaded to local host
+Set up hadoop configuration as follows:
+
+config setup
+config.set("mapred.map.child.java.opts", "-javaagent:/tmp/profiler.jar");
+That's all that's needed to enable profiling.
+
+Example Job Profiling Result:
+Job counter:
+...
+Group: hadoop-profiler
+       mymethod.invocationCount=92384
+       mymethod.execTimeMs=12342311
+The shows the target method "mymethod" was invoked 92384 times with total execution time 12342311 milliseconds
+
+### Known Issues
+
+The target method should not be recursive method, the profiler does not work well with recursive methods
+Future Works
+
+Add support for specifying method parameters in with "-javaagent”
