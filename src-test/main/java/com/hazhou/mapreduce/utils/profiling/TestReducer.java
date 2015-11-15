@@ -1,4 +1,4 @@
-package com.demdex.platform.utils.profiling;
+package com.hazhou.mapreduce.utils.profiling;
 
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;

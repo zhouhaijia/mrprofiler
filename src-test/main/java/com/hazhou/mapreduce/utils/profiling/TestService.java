@@ -1,4 +1,6 @@
-package com.demdex.platform.utils.profiling;
+package com.hazhou.mapreduce.utils.profiling;
+
+import com.hazhou.mapreduce.utils.profiling.Profile;
 
 public class TestService {
 	

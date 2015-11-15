@@ -1,8 +1,10 @@
-package com.demdex.platform.utils.profiling;
+package com.hazhou.mapreduce.utils.profiling;
 
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+
+import com.hazhou.mapreduce.utils.profiling.MethodProfiler;
 
 public class HadoopMapreduceProfilerTest {
 
